@@ -1,0 +1,284 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>AccountabilityBot</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --fg:#e8eaf0; --dim:#8b93a7; --accent:#7cf5c4; --hot:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
+  header { padding:18px 28px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; }
+  h1 { font-size:17px; margin:0; font-weight:600; letter-spacing:.2px; }
+  .who { margin-left:auto; display:flex; gap:8px; }
+  button { font:inherit; color:var(--fg); background:var(--panel); border:1px solid var(--line);
+           border-radius:8px; padding:8px 14px; cursor:pointer; }
+  button:hover { border-color:#3a4152; }
+  button.on { background:var(--accent); color:#08110d; border-color:var(--accent); font-weight:600; }
+  main { display:grid; grid-template-columns:1fr 1fr; gap:24px; padding:24px 28px; max-width:1150px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:.9px; color:var(--dim);
+              margin:0 0 14px; font-weight:600; }
+  .count { font-size:44px; font-weight:700; line-height:1; }
+  .count.over { color:var(--hot); }
+  .count small { font-size:13px; font-weight:400; color:var(--dim); display:block; margin-top:6px; }
+  ul { list-style:none; margin:16px 0 0; padding:0; }
+  li { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line); }
+  li span { flex:1; }
+  li button { padding:4px 9px; font-size:12px; }
+  form { display:flex; gap:8px; margin-top:16px; }
+  input { flex:1; font:inherit; color:var(--fg); background:#0f1218; border:1px solid var(--line);
+          border-radius:8px; padding:9px 12px; }
+  #learned { white-space:pre-wrap; }
+  .live { color:var(--accent); }
+  #talk { width:100%; margin-top:8px; padding:12px; }
+  #talk.active { background:var(--hot); border-color:var(--hot); color:#fff; }
+  #status { color:var(--dim); font-size:13px; min-height:20px; margin-top:10px; }
+  .tone { color:var(--dim); font-size:13px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AccountabilityBot</h1>
+  <div class="who">
+    <button id="u-alice" onclick="selectUser('alice')">Alice</button>
+    <button id="u-bob" onclick="selectUser('bob')">Bob</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Open tasks</h2>
+    <div id="count" class="count">—<small id="thresholdNote"></small></div>
+    <ul id="tasks"></ul>
+    <form onsubmit="addTask(event)">
+      <input id="newTask" placeholder="Add a task…" autocomplete="off">
+      <button type="submit">Add</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>What I've learned about you</h2>
+    <div id="learned">Select a user.</div>
+    <div class="tone" id="tone"></div>
+    <button id="talk" onclick="toggleCall()">Talk to my coworker</button>
+    <div id="status"></div>
+  </section>
+</main>
+
+<script src="./elevenlabs.js"></script>
+<script>
+const AGENT_ID = 'agent_0401kzyg8dmhempvjvn3z9kt0b39';
+
+// Set to true ONLY after enabling System-prompt overrides in the agent's
+// Security settings. Sending an override that is not allowed closes the socket.
+const USE_OVERRIDES = false;
+
+// The prompt lives here, not in the dashboard. Values are interpolated in JS,
+// so nothing depends on {{variable}} substitution server-side.
+const buildPrompt = (s, trigger_reason) => `You are ${s.user_name}'s AI coworker. You have worked with them before.
+
+WHAT YOU KNOW ABOUT THEM (learned from their history, not assumed):
+${s.working_model}
+
+THEY CURRENTLY HAVE ${s.tasks.length} OPEN TASKS.
+
+HOW TO TALK TO THIS PERSON:
+${s.tone_directive}
+
+WHY YOU ARE SPEAKING RIGHT NOW:
+${trigger_reason}
+
+RULES:
+- Open by referencing something specific you learned about them. Never generic.
+- Never open with "how can I help you" or any generic greeting. You already know why you are here.
+- If their open task count conflicts with what has historically worked for them,
+  say so immediately and propose the specific alternative that worked before.
+- Cite the evidence: "last time you had five, you finished two."
+- Call search_memories before giving any advice about a blocker.
+- Call record_event after they agree to a plan.
+- Two sentences max per turn. This is speech, not text.`;
+const { Conversation } = window.ElevenLabsClient;
+
+let state = null;          // whatever /api/state/:user returned
+let conversation = null;   // live session, or null
+let hasIntervened = false; // FR3 guard — at most one auto-interrupt per user session
+
+const $ = (id) => document.getElementById(id);
+const say = (t) => { $('status').textContent = t; };
+
+// ---------- user switching (FR1) ----------
+async function selectUser(id) {
+  await endCall();
+  hasIntervened = false;
+  $('u-alice').classList.toggle('on', id === 'alice');
+  $('u-bob').classList.toggle('on', id === 'bob');
+  await loadState(id);
+  // Unlocks autoplay audio for the later interruption. Must happen on this click.
+  try { await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { say('Mic permission denied — the agent will not be able to hear you.'); }
+}
+
+async function loadState(id) {
+  const r = await fetch('/api/state/' + id);
+  state = await r.json();
+  render();
+}
+
+// ---------- render (FR2 + FR6) ----------
+function render() {
+  if (!state) return;
+  const n = state.tasks.length;
+  const over = n > state.threshold;
+  $('count').className = 'count' + (over ? ' over' : '');
+  $('count').innerHTML = n + '<small>' + (over ? 'above' : 'within') +
+    ' ' + state.user_name + "'s usual limit of " + state.threshold + '</small>';
+
+  $('tasks').innerHTML = state.tasks.map((t) =>
+    '<li><span>' + esc(t.title) + '</span>' +
+    '<button onclick="setStatus(\'' + t._id + '\',\'completed\')">Complete</button>' +
+    '<button onclick="setStatus(\'' + t._id + '\',\'blocked\')">Blocked</button></li>'
+  ).join('');
+
+  $('learned').textContent = state.working_model;
+  $('tone').textContent = 'Tone directive (from MongoDB): ' + state.tone_directive;
+}
+
+function esc(s) { return String(s).replace(/[<>&]/g, (c) => ({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c])); }
+
+// ---------- tasks + the intervention (FR3) ----------
+async function addTask(e) {
+  e.preventDefault();
+  if (!state) return say('Select a user first.');
+  const title = $('newTask').value.trim();
+  if (!title) return;
+  $('newTask').value = '';
+
+  await post('/api/task', { user_id: state.user_id, title });
+  await loadState(state.user_id);
+
+  const n = state.tasks.length;
+  if (n > state.threshold && !hasIntervened && !conversation) {
+    hasIntervened = true;
+    startCall('They just added a task and now have ' + n + ' open, which is above the ' +
+              state.threshold + ' their own history says they hold. You are interrupting them, ' +
+              'unprompted, right now. They did not ask to talk.');
+  }
+}
+
+async function setStatus(task_id, status) {
+  await post('/api/task/status', { task_id, status });
+  await loadState(state.user_id);
+}
+
+// ---------- voice (FR4 + FR5) ----------
+function toggleCall() {
+  if (conversation) return endCall();
+  if (!state) return say('Select a user first.');
+  startCall('They pressed the button to talk to you. Nothing has been flagged.');
+}
+
+async function startCall(trigger_reason) {
+  try {
+    say('Connecting…');
+    console.log('startSession vars:', {
+      user_name: state.user_name,
+      tone_directive: state.tone_directive,
+      open_task_count: String(state.tasks.length),
+      trigger_reason,
+    });
+    $('talk').classList.add('active');
+    $('talk').textContent = 'End call';
+
+    conversation = await Conversation.startSession({
+      agentId: AGENT_ID,
+      connectionType: 'websocket',
+      ...(USE_OVERRIDES
+        ? { overrides: { agent: { prompt: { prompt: buildPrompt(state, trigger_reason) } } } }
+        : {}),
+      dynamicVariables: {
+        user_name: state.user_name,
+        working_model: state.working_model,
+        tone_directive: state.tone_directive,
+        open_task_count: String(state.tasks.length),
+        trigger_reason,
+      },
+      clientTools: {
+        get_tasks: () =>
+          state.tasks.length
+            ? state.tasks.map((t) => t.title).join('; ')
+            : 'No open tasks.',
+
+        search_memories: async ({ query }) => {
+          say('🔎 search_memories: ' + query);
+          const r = await fetch('/api/memories/' + state.user_id + '?q=' + encodeURIComponent(query));
+          const { memories } = await r.json();
+          return memories.join(' ');
+        },
+
+        record_event: async ({ event_type, detail }) => {
+          say('📝 record_event: ' + event_type);
+          await post('/api/event', {
+            user_id: state.user_id, event_type, detail, open_tasks: state.tasks.length,
+          });
+          return 'Recorded.';
+        },
+
+        update_working_model: async ({ insight }) => {
+          say('🧠 update_working_model');
+          const r = await post('/api/insight', { user_id: state.user_id, insight });
+          const d = await r.json();
+          state.working_model = d.working_model;
+          $('learned').innerHTML = esc(d.working_model.replace(' ' + d.insight, '')) +
+            ' <span class="live">' + esc(d.insight) + '</span>';
+          return 'Saved.';
+        },
+      },
+      onConnect: () => say('🔊 Live'),
+      onDisconnect: (details) => {
+        console.log('DISCONNECT REASON:', JSON.stringify(details, null, 2));
+        conversation = null; resetTalkButton();
+        say('Call ended: ' + (details?.reason || '') + ' ' + (details?.message || ''));
+      },
+      onError: (message, context) => {
+        console.log('AGENT ERROR:', message, context);
+        say('Error: ' + message);
+      },
+      onModeChange: ({ mode }) => say(mode === 'speaking' ? '🔊 Speaking…' : '🎙 Listening…'),
+    });
+  } catch (err) {
+    conversation = null;
+    resetTalkButton();
+    say('Could not start: ' + err.message);
+    console.error(err);
+  }
+}
+
+async function endCall() {
+  if (!conversation) return;
+  const c = conversation;
+  conversation = null;
+  try { await c.endSession(); } catch (e) {}
+  resetTalkButton();
+}
+
+function resetTalkButton() {
+  $('talk').classList.remove('active');
+  $('talk').textContent = 'Talk to my coworker';
+}
+
+function post(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+window.selectUser = selectUser;
+window.addTask = addTask;
+window.setStatus = setStatus;
+window.toggleCall = toggleCall;
+</script>
+</body>
+</html>
