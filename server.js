@@ -30,6 +30,7 @@ app.get('/api/state/:user', async (req, res) => {
     working_model: wm.summary,
     tone_directive: wm.tone_directive,
     threshold: wm.threshold,
+    voice_id: wm.voice_id || null,
     open_task_count: String(tasks.length),
     tasks,
   });

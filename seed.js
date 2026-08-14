@@ -65,7 +65,8 @@ const workingModels = [
       'When given a ranked list she picks the top item and starts. When given an unranked list she reorganises it instead of working.',
     ].join(' '),
     tone_directive:
-      'Warm and unhurried. Never stack more than one suggestion per turn. Do not tell her what to prioritise — ask her which item matters most, then ask for its first concrete step. Avoid urgency language; it makes her freeze.',
+      'Warm and unhurried, with bright upbeat energy — a friendly Californian register, casual and a little bubbly, but never ditzy and never sarcastic. Never stack more than one suggestion per turn. Do not tell her what to prioritise — ask her which item matters most, then ask for its first concrete step. Avoid urgency language; it makes her freeze.',
+    voice_id: null,
     updated_at: new Date(),
   },
   {
@@ -78,7 +79,11 @@ const workingModels = [
       'He rejects check-ins on work that is going fine and responds badly to being asked how he feels about his workload.',
     ].join(' '),
     tone_directive:
-      'Blunt and brief. One sentence where possible. Do not offer encouragement, do not ask how he is doing, do not suggest cutting scope unless he is above 8 open tasks. If nothing is wrong, say so and get out of the way.',
+      'Blunt and brief. Dry deadpan humour, never warmth. One sentence where possible. Do not offer encouragement, do not ask how he is doing, do not suggest cutting scope unless he is above 8 open tasks. If nothing is wrong, say so and get out of the way. ' +
+      'IF AND ONLY IF he is above 8 open tasks, open the conversation with exactly this line, word for word, before anything else: ' +
+      '"Nine open. Bob, I have watched you juggle seven of these without blinking, so I am genuinely impressed and slightly concerned." ' +
+      'Then say one short sentence about which one to drop. Do not repeat the line later in the conversation.',
+    voice_id: null,
     updated_at: new Date(),
   },
 ];
@@ -106,6 +111,9 @@ const tasks = [
   { user_id: 'bob', title: 'Fix flaky CI on arm64', status: 'open', created_at: daysAgo(2) },
   { user_id: 'bob', title: 'Upgrade the driver to 6.x', status: 'open', created_at: daysAgo(1) },
   { user_id: 'bob', title: 'Review Priya\'s migration PR', status: 'open', created_at: daysAgo(1) },
+  { user_id: 'bob', title: 'Rotate the staging credentials', status: 'open', created_at: daysAgo(1) },
+  { user_id: 'bob', title: 'Cut the 4.2 release branch', status: 'open', created_at: daysAgo(0) },
+  { user_id: 'bob', title: 'Debug the p99 latency spike', status: 'open', created_at: daysAgo(0) },
 ];
 
 // ---------- run ----------

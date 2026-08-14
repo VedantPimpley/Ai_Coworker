@@ -4,42 +4,124 @@
 <meta charset="utf-8">
 <title>AccountabilityBot</title>
 <style>
-  :root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --fg:#e8eaf0; --dim:#8b93a7; --accent:#7cf5c4; --hot:#ff6b6b; }
+  :root {
+    --bg:#080a0f; --panel:rgba(23,26,33,.72); --line:rgba(255,255,255,.09);
+    --fg:#eef0f6; --dim:#8b93a7; --accent:#7cf5c4; --accent2:#8ab4ff; --hot:#ff6b6b;
+  }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
-  header { padding:18px 28px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; }
-  h1 { font-size:17px; margin:0; font-weight:600; letter-spacing:.2px; }
+  body {
+    margin:0; color:var(--fg); min-height:100vh;
+    font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;
+    background:
+      radial-gradient(900px 600px at 12% -8%, rgba(124,245,196,.13), transparent 60%),
+      radial-gradient(800px 600px at 92% 8%, rgba(138,180,255,.13), transparent 60%),
+      var(--bg);
+    background-attachment:fixed;
+  }
+  header {
+    padding:20px 34px; display:flex; align-items:center; gap:16px;
+    border-bottom:1px solid var(--line);
+    background:rgba(8,10,15,.6); backdrop-filter:blur(12px);
+    position:sticky; top:0; z-index:5;
+  }
+  h1 { font-size:16px; margin:0; font-weight:650; letter-spacing:-.1px; }
+  h1::before {
+    content:''; display:inline-block; width:9px; height:9px; border-radius:50%;
+    background:var(--accent); margin-right:10px; vertical-align:middle;
+    box-shadow:0 0 12px var(--accent);
+  }
+  .tag { font-size:11px; color:var(--dim); letter-spacing:.4px; text-transform:uppercase; }
   .who { margin-left:auto; display:flex; gap:8px; }
-  button { font:inherit; color:var(--fg); background:var(--panel); border:1px solid var(--line);
-           border-radius:8px; padding:8px 14px; cursor:pointer; }
-  button:hover { border-color:#3a4152; }
-  button.on { background:var(--accent); color:#08110d; border-color:var(--accent); font-weight:600; }
-  main { display:grid; grid-template-columns:1fr 1fr; gap:24px; padding:24px 28px; max-width:1150px; }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; }
-  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:.9px; color:var(--dim);
-              margin:0 0 14px; font-weight:600; }
-  .count { font-size:44px; font-weight:700; line-height:1; }
-  .count.over { color:var(--hot); }
-  .count small { font-size:13px; font-weight:400; color:var(--dim); display:block; margin-top:6px; }
-  ul { list-style:none; margin:16px 0 0; padding:0; }
-  li { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line); }
-  li span { flex:1; }
-  li button { padding:4px 9px; font-size:12px; }
+  button {
+    font:inherit; color:var(--fg); background:rgba(255,255,255,.04);
+    border:1px solid var(--line); border-radius:10px; padding:8px 15px; cursor:pointer;
+    transition:transform .12s ease, background .15s ease, border-color .15s ease;
+  }
+  button:hover { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.2); }
+  button:active { transform:translateY(1px); }
+  button.on {
+    background:linear-gradient(180deg,#8ff9d0,#5fe0ae); color:#04140e;
+    border-color:transparent; font-weight:650; box-shadow:0 4px 18px rgba(124,245,196,.28);
+  }
+  main { display:grid; grid-template-columns:1fr 1fr; gap:22px; padding:26px 34px 40px; max-width:1180px; }
+  .panel {
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px 24px;
+    backdrop-filter:blur(14px); box-shadow:0 10px 40px rgba(0,0,0,.35);
+  }
+  .panel h2 {
+    font-size:11px; text-transform:uppercase; letter-spacing:1.1px; color:var(--dim);
+    margin:0 0 16px; font-weight:650;
+  }
+  .count { font-size:60px; font-weight:750; line-height:1; letter-spacing:-2px;
+           background:linear-gradient(180deg,#fff,#9aa3b8); -webkit-background-clip:text;
+           background-clip:text; color:transparent; }
+  .count.over {
+    background:linear-gradient(180deg,#ff9a9a,#ff5c5c); -webkit-background-clip:text;
+    background-clip:text; color:transparent; animation:pulse 1.4s ease-in-out 3;
+  }
+  @keyframes pulse { 50% { opacity:.55; } }
+  .count small {
+    font-size:12.5px; font-weight:500; color:var(--dim); display:block; margin-top:9px;
+    letter-spacing:0; -webkit-text-fill-color:var(--dim);
+  }
+  .count.over small { -webkit-text-fill-color:#ff9a9a; }
+  ul { list-style:none; margin:18px 0 0; padding:0; }
+  li {
+    display:flex; align-items:center; gap:10px; padding:11px 12px; margin-bottom:7px;
+    background:rgba(255,255,255,.035); border:1px solid var(--line); border-radius:10px;
+  }
+  li span { flex:1; font-size:14px; }
+  li button { padding:4px 10px; font-size:11.5px; border-radius:7px; color:var(--dim); }
+  li button:hover { color:var(--fg); }
   form { display:flex; gap:8px; margin-top:16px; }
-  input { flex:1; font:inherit; color:var(--fg); background:#0f1218; border:1px solid var(--line);
-          border-radius:8px; padding:9px 12px; }
-  #learned { white-space:pre-wrap; }
-  .live { color:var(--accent); }
-  #talk { width:100%; margin-top:8px; padding:12px; }
-  #talk.active { background:var(--hot); border-color:var(--hot); color:#fff; }
-  #status { color:var(--dim); font-size:13px; min-height:20px; margin-top:10px; }
-  .tone { color:var(--dim); font-size:13px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+  input {
+    flex:1; font:inherit; color:var(--fg); background:rgba(0,0,0,.32);
+    border:1px solid var(--line); border-radius:10px; padding:10px 14px; outline:none;
+  }
+  input:focus { border-color:rgba(124,245,196,.5); box-shadow:0 0 0 3px rgba(124,245,196,.1); }
+  #learned { white-space:pre-wrap; font-size:14.5px; color:#dfe3ec; }
+  .live {
+    color:var(--accent); font-weight:600;
+    animation:fadein .5s ease; background:rgba(124,245,196,.1);
+    padding:1px 5px; border-radius:5px;
+  }
+  @keyframes fadein { from { opacity:0; } }
+  .newly-learned {
+    color:var(--accent); font-weight:600; margin-top:10px; padding:9px 12px;
+    background:rgba(124,245,196,.09); border-left:2px solid var(--accent);
+    border-radius:0 8px 8px 0; animation:fadein .6s ease;
+  }
+  .newly-learned::after {
+    content:' · just written to MongoDB'; color:var(--dim); font-weight:400; font-size:12px;
+  }
+  #talk {
+    width:100%; margin-top:16px; padding:13px; font-weight:600; font-size:14.5px;
+    background:linear-gradient(180deg,rgba(138,180,255,.18),rgba(138,180,255,.08));
+    border-color:rgba(138,180,255,.35);
+  }
+  #talk.active {
+    background:linear-gradient(180deg,#ff8a8a,#f25252); border-color:transparent; color:#fff;
+    box-shadow:0 4px 20px rgba(255,107,107,.3);
+  }
+  #nextday { width:100%; margin-top:7px; padding:8px; font-size:12.5px; color:var(--accent2);
+             border-color:rgba(138,180,255,.3); }
+  #mute { width:100%; margin-top:7px; padding:8px; font-size:12.5px; color:var(--dim); }
+  #mute.muted { background:rgba(255,107,107,.16); border-color:rgba(255,107,107,.4); color:#ffb3b3; }
+  #status { color:var(--dim); font-size:12.5px; min-height:20px; margin-top:12px; }
+  .tone { display:none; }
+  #toolLog { margin-top:8px; font-size:12.5px; font-family:ui-monospace,SFMono-Regular,monospace; }
+  #toolLog div {
+    color:var(--accent); padding:7px 11px; margin-top:6px; animation:fadein .4s ease;
+    background:rgba(124,245,196,.08); border:1px solid rgba(124,245,196,.2); border-radius:8px;
+    word-break:break-word;
+  }
 </style>
 </head>
 <body>
 
 <header>
   <h1>AccountabilityBot</h1>
+  <span class="tag">thresholds &amp; tone live in MongoDB</span>
   <div class="who">
     <button id="u-alice" onclick="selectUser('alice')">Alice</button>
     <button id="u-bob" onclick="selectUser('bob')">Bob</button>
@@ -62,7 +144,10 @@
     <div id="learned">Select a user.</div>
     <div class="tone" id="tone"></div>
     <button id="talk" onclick="toggleCall()">Talk to my coworker</button>
+    <button id="mute" onclick="toggleMute()">🎙 Mic on — click to mute</button>
+    <button id="nextday" onclick="nextDay()">⏭ Next day — reload from MongoDB</button>
     <div id="status"></div>
+    <div id="toolLog"></div>
   </section>
 </main>
 
@@ -73,6 +158,10 @@ const AGENT_ID = 'agent_0401kzyg8dmhempvjvn3z9kt0b39';
 // Set to true ONLY after enabling System-prompt overrides in the agent's
 // Security settings. Sending an override that is not allowed closes the socket.
 const USE_OVERRIDES = false;
+
+// Set to true ONLY after enabling voice/TTS overrides in Configure → Settings
+// AND publishing. Each user's voice_id is a MongoDB field, same as their tone.
+const USE_VOICE_OVERRIDE = false;
 
 // The prompt lives here, not in the dashboard. Values are interpolated in JS,
 // so nothing depends on {{variable}} substitution server-side.
@@ -106,6 +195,14 @@ let hasIntervened = false; // FR3 guard — at most one auto-interrupt per user 
 
 const $ = (id) => document.getElementById(id);
 const say = (t) => { $('status').textContent = t; };
+
+// Persistent, append-only. The status line is overwritten by mode changes.
+function tool(t) {
+  console.log('CLIENT TOOL:', t);
+  const d = document.createElement('div');
+  d.textContent = t;
+  $('toolLog').appendChild(d);
+}
 
 // ---------- user switching (FR1) ----------
 async function selectUser(id) {
@@ -171,6 +268,16 @@ async function setStatus(task_id, status) {
   await loadState(state.user_id);
 }
 
+// Only send overrides that are switched on — an unpermitted override closes
+// the socket outright rather than being ignored.
+function buildOverrides(trigger_reason) {
+  const agent = USE_OVERRIDES
+    ? { prompt: { prompt: buildPrompt(state, trigger_reason) } } : null;
+  const tts = (USE_VOICE_OVERRIDE && state.voice_id) ? { voiceId: state.voice_id } : null;
+  if (!agent && !tts) return {};
+  return { overrides: { ...(agent ? { agent } : {}), ...(tts ? { tts } : {}) } };
+}
+
 // ---------- voice (FR4 + FR5) ----------
 function toggleCall() {
   if (conversation) return endCall();
@@ -193,9 +300,7 @@ async function startCall(trigger_reason) {
     conversation = await Conversation.startSession({
       agentId: AGENT_ID,
       connectionType: 'websocket',
-      ...(USE_OVERRIDES
-        ? { overrides: { agent: { prompt: { prompt: buildPrompt(state, trigger_reason) } } } }
-        : {}),
+      ...buildOverrides(trigger_reason),
       dynamicVariables: {
         user_name: state.user_name,
         working_model: state.working_model,
@@ -210,22 +315,28 @@ async function startCall(trigger_reason) {
             : 'No open tasks.',
 
         search_memories: async ({ query }) => {
-          say('🔎 search_memories: ' + query);
+          tool('🔎 search_memories: ' + query);
           const r = await fetch('/api/memories/' + state.user_id + '?q=' + encodeURIComponent(query));
           const { memories } = await r.json();
           return memories.join(' ');
         },
 
         record_event: async ({ event_type, detail }) => {
-          say('📝 record_event: ' + event_type);
+          tool('📝 record_event [' + event_type + '] ' + detail);
           await post('/api/event', {
             user_id: state.user_id, event_type, detail, open_tasks: state.tasks.length,
           });
+          // Persistence, made visible: the panel grows while you watch.
+          const line = document.createElement('div');
+          line.className = 'newly-learned';
+          line.textContent = '↳ ' + detail;
+          $('learned').appendChild(line);
+          lastLearned = detail;
           return 'Recorded.';
         },
 
         update_working_model: async ({ insight }) => {
-          say('🧠 update_working_model');
+          tool('🧠 update_working_model');
           const r = await post('/api/insight', { user_id: state.user_id, insight });
           const d = await r.json();
           state.working_model = d.working_model;
@@ -235,6 +346,9 @@ async function startCall(trigger_reason) {
         },
       },
       onConnect: () => say('🔊 Live'),
+      // Fires when the agent calls a tool name we did not register — i.e. a
+      // dashboard/code name mismatch. Silence here means it never called one.
+      onUnhandledClientToolCall: (c) => tool('⚠️ UNHANDLED TOOL: ' + (c?.tool_name || JSON.stringify(c))),
       onDisconnect: (details) => {
         console.log('DISCONNECT REASON:', JSON.stringify(details, null, 2));
         conversation = null; resetTalkButton();
@@ -265,6 +379,39 @@ async function endCall() {
 function resetTalkButton() {
   $('talk').classList.remove('active');
   $('talk').textContent = 'Talk to my coworker';
+  setMute(false);
+}
+
+// Venue noise trips the agent's voice-activity detector and makes it stop
+// mid-sentence. Mute between your turns.
+let muted = false;
+function setMute(v) {
+  muted = v;
+  $('mute').classList.toggle('muted', muted);
+  $('mute').textContent = muted ? '🔇 Mic muted — click to unmute' : '🎙 Mic on — click to mute';
+  try { conversation?.setMicMuted(muted); } catch (e) { console.log('setMicMuted:', e); }
+}
+function toggleMute() { setMute(!muted); }
+
+// Demo beat: promote what the agent learned this session into the stored
+// working model, end the call, and reload state from Atlas. Everything on
+// screen afterwards came back out of the database.
+let lastLearned = null;
+async function nextDay() {
+  if (!state) return say('Select a user first.');
+  await endCall();
+  if (lastLearned) await post('/api/insight', { user_id: state.user_id, insight: lastLearned });
+  // Close out yesterday's tasks, keeping the two she started the day with, so
+  // the new day begins from the same footing.
+  const keep = 2;
+  for (const t of state.tasks.slice(keep)) {
+    await post('/api/task/status', { task_id: t._id, status: 'completed' });
+  }
+  hasIntervened = false;
+  lastLearned = null;
+  $('toolLog').innerHTML = '';
+  await loadState(state.user_id);
+  say('New day. State reloaded from MongoDB.');
 }
 
 function post(url, body) {
@@ -279,6 +426,8 @@ window.selectUser = selectUser;
 window.addTask = addTask;
 window.setStatus = setStatus;
 window.toggleCall = toggleCall;
+window.toggleMute = toggleMute;
+window.nextDay = nextDay;
 </script>
 </body>
 </html>
