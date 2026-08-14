@@ -1,4 +1,4 @@
-# AccountabilityBot
+# AI Coworker (Accountabiity Bot)
 
 **It doesn't tell you how to work. It learns how you work.**
 
